@@ -1,0 +1,180 @@
+# Experimental Power Analysis
+### Does placing signs encouraging stairs over elevators increase stair use?
+
+##Experiment Overview
+
+FILL! 
+
+## Testing Procedure
+
+FILL!
+Metrics: 
+Treatment: 
+Statistical Power Approach: 
+Assumptions: 
+
+```{r generate data, include = TRUE}
+library(data.table)
+library(here)
+library(ggplot2)
+library(tidyr)
+
+set.seed(10)
+
+#Create dummy data
+#assuming that: 
+    # control group has 80% of people taking elevator with a SD of 15%
+    # treatment effect is a 2-20% reduction in people taking the elevator'
+
+d <- data.table(
+  id = 1:1100
+) 
+d[ , D := sample(c('treatment', 'control'), size=.N, replace=T)]
+d[D == "control",   Y_control   := rnorm(n=.N, mean=80, sd=15)]
+
+#set up four possible treatment effect sizes [2, 8, 14, 20]
+d[D == "treatment", Y2_treatment := rnorm(n=.N, mean=78, sd=15)]
+d[D == "treatment", Y8_treatment := rnorm(n=.N, mean=72, sd=15)]
+d[D == "treatment", Y14_treatment := rnorm(n=.N, mean=66, sd=15)]
+d[D == "treatment", Y20_treatment := rnorm(n=.N, mean=60, sd=15)]
+
+d[, Y2 := ifelse(D == "control", Y_control, Y2_treatment)]
+d[, Y8 := ifelse(D == "control", Y_control, Y8_treatment)]
+d[, Y14 := ifelse(D == "control", Y_control, Y14_treatment)]
+d[, Y20 := ifelse(D == "control", Y_control, Y20_treatment)]
+
+```
+
+## Simulation of 10 Subjects
+Suppose that we are only able to recruit 10 people to be a part of your experiment -- 5 in treatment and another 5 in control. Here we check the power of such an experiment across our different treatment effect sizes.
+
+```{r ten person sample, include=TRUE}
+
+#initialize random sample of 10 people
+d10 <- d[, .SD[sample(.N, 5)], keyby = D]
+#set up place to store p values
+p_values <- c()
+#list out hypothetical treatment sizes to run t test on
+treatments_to_test <- c("Y2", "Y8", "Y14", "Y20")
+
+
+for (treatment_effect in treatments_to_test) {
+  t_test_ten_people <- t.test(d10[D == 'control', ..treatment_effect],
+                              d10[D == 'treatment', ..treatment_effect])
+  p_values <- c(p_values, t_test_ten_people$p.value)
+}
+
+p_values
+
+```
+
+> [The p-value from our 10-person experiment with an effect size of 2% is: `r p_values[1]`. 
+  The p-value from our 10-person experiment with an effect size of 8% is: `r p_values[2]`.
+  The p-value from our 10-person experiment with an effect size of 14% is: `r p_values[3]`.
+  The p-value from our 10-person experiment with an effect size of 20% is: `r p_values[4]`.]
+
+## With only ten subjects, what is our power? 
+We repeat this process -- sampling 10 people from our dummy data and conducting the t-tests -- one-thousand times to plot the distribution of p-values observed at each sample size.
+
+```{r many ten person samples, include=TRUE}
+# fill this in with the p-values from your power analysis
+
+#create a table to plot p-values per treatment effect
+t_test_p_values <- data.table(
+  id = 1:1000
+) 
+
+for (treatment_effect in treatments_to_test) {
+  t_test_p_values_i <- c()
+  for (i in 1:1000) {
+    d10_i <- d[, .SD[sample(.N, 5)], keyby = D]
+    
+    t_test_ten_people_i <- t.test(d10_i[D == 'control', ..treatment_effect],
+                                d10_i[D == 'treatment', ..treatment_effect])
+    t_test_p_values_i <- c(t_test_p_values_i, t_test_ten_people_i$p.value)
+  }
+  t_test_p_values[, (treatment_effect) := t_test_p_values_i]
+}
+## you can either write a for loop, use an apply method, or use replicate 
+## (which is an easy-of-use wrapper to an apply method)
+```
+
+
+## Visual analysis
+
+```{r histogram of ten person samples, include=TRUE}
+
+# Reshape the data from wide to long format
+t_test_p_values_long <- melt(t_test_p_values, id.vars = "id", 
+                             variable.name = "treatment_effect", 
+                             value.name = "p_value")
+
+# Plot the 4 series (columns) as histograms
+ggplot(t_test_p_values_long, aes(x = p_value, fill = treatment_effect)) + 
+  geom_histogram(bins = 50, alpha = 0.4, position = "identity") + 
+  labs(
+    title = 'p-value distribution for n = 10',
+    x = 'p-value',
+    fill = 'Treatment Effect'
+  ) + 
+  theme_minimal()
+
+```
+
+
+## Moar power! 
+Simulate the percentage of times we would reject the null across different effect sizes and different sample sizes. 
+
+```{r, include=TRUE} 
+
+#create a data table to record t-test rejects across varying sample sizes
+experiment_simulations <- data.table(
+  sample_size = integer(),
+  t_test_rejects = numeric(),
+  treatment_effect = character()
+)
+
+#make a vector to iterate through different numbers of people in the sample
+people_in_sample <- c(seq(10,1000, by = 10)) #sequence 10-100 increment by 10 
+
+#three nested for loops this is embarrassing.
+
+#loop over the different possible treatment effects
+for (treatment_effect in treatments_to_test) {
+  
+  #loop over the possible number of people we could have in our sample
+  for (i in 1:(length(people_in_sample))) {
+    t_test_p_values_i <- rep(NA, 1000) 
+    
+    #simulate 100 randomized experiments with each setting for n (sample size)
+    for (j in 1:1000) {
+      d_i_j <- d[, .SD[sample(.N, people_in_sample[i]/2)], keyby = D]
+      t_test_i_people_j <- t.test(d_i_j[D == 'control', ..treatment_effect],
+                                  d_i_j[D == 'treatment', ..treatment_effect])
+      t_test_p_values_i[j] <- t_test_i_people_j$p.value
+    }
+    t_test_rejects_i <- sum(t_test_p_values_i < 0.05) / length(t_test_p_values_i)
+    new_row = data.table(sample_size = people_in_sample[i],
+                         t_test_rejects = t_test_rejects_i, 
+                         treatment_effect = treatment_effect)
+    experiment_simulations <- rbind(experiment_simulations, new_row)
+  }
+}
+
+```
+
+```{r, include = TRUE}
+
+ggplot(experiment_simulations) +
+  aes(x = sample_size, y = t_test_rejects, color = treatment_effect) + 
+  geom_line(linewidth = 1, alpha = 0.5) +  # Creates the line
+  geom_point(size = 1) +  # Adds points at each sample size
+  labs(
+    title = "Proportion of T-Test Rejections by Sample Size",
+    x = "Sample Size",
+    y = "Proportion of Rejections (p < 0.05)"
+    ) +
+  theme_minimal()
+```
+
+
