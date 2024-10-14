@@ -3,7 +3,7 @@
 
 ##Experiment Overview
 
-FILL! 
+In this experiment, we aim to examine whether the placement of a sign stating 'Use the stairs, improve your health' influences the choice between using stairs versus elevators. This document provides an overview of our power analysis to determine the necessary sample sizes to test our hypothesis.
 
 ## Testing Procedure
 
