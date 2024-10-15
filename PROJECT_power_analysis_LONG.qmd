@@ -55,11 +55,32 @@ d[, Y20 := ifelse(D == "control", Y_control, Y20_treatment)]
 
 ## Simulation of 10 Subjects
 In case we could only observe 10 people – 5 in treatment and another 5 in control - what sorts of p-values could we expect across the different treatment effect sizes we
-think could be possible? We sample 10 people from our dummy data and conduct t-tests four thousand times to plot the distribution of p-values observed at each sample size and ATE.
+think could be possible?
 
-```{r many ten person samples, include=TRUE}
+```{r ten person sample, include=TRUE}
+#initialize random sample of 10 people
+d10 <- d[, .SD[sample(.N, 5)], keyby = D]
+#set up place to store p values
+p_values <- c()
 #list out hypothetical treatment sizes to run t test on
 treatments_to_test <- c("Y2", "Y8", "Y14", "Y20")
+#loop through each treatment effect size and simulate a t test
+for (treatment_effect in treatments_to_test) {
+  t_test_ten_people <- t.test(d10[D == 'control', ..treatment_effect],
+                              d10[D == 'treatment', ..treatment_effect])
+  p_values <- c(p_values, t_test_ten_people$p.value)
+}
+```
+
+> [The p-value from a random 10-person experiment with an effect size of 2% is: `r p_values[1]`. 
+  The p-value from a random 10-person experiment with an effect size of 8% is: `r p_values[2]`.
+  The p-value from a random 10-person experiment with an effect size of 14% is: `r p_values[3]`.
+  The p-value from a random 10-person experiment with an effect size of 20% is: `r p_values[4]`.]
+
+### With only ten subjects, what is our power? 
+We repeat this process -- sampling 10 people from our dummy data and conducting the t-tests -- one-thousand times to plot the distribution of p-values observed at each sample size.
+
+```{r many ten person samples, include=TRUE}
 #create a table to plot p-values per treatment effect
 t_test_p_values <- data.table(
   id = 1:1000
@@ -109,16 +130,16 @@ experiment_simulations <- data.table(
   treatment_effect = character()
 )
 #make a vector to iterate through different numbers of people in the sample
-people_in_sample <- c(seq(10,500, by = 10)) #sequence 10-1000 increment by 10 
+people_in_sample <- c(seq(10,100, by = 10)) #sequence 10-100 increment by 10 
 
 #three nested for loops this is embarassing... 
 #loop over the different possible treatment effects
 for (treatment_effect in treatments_to_test) {
   #loop over the possible number of people we could have in our sample
   for (i in 1:(length(people_in_sample))) {
-    t_test_p_values_i <- rep(NA, 1000) 
+    t_test_p_values_i <- rep(NA, 10) 
     #simulate 100 randomized experiments with each setting for n (sample size)
-    for (j in 1:1000) {
+    for (j in 1:10) {
       d_i_j <- d[, .SD[sample(.N, people_in_sample[i]/2)], keyby = D]
       t_test_i_people_j <- t.test(d_i_j[D == 'control', ..treatment_effect],
                                   d_i_j[D == 'treatment', ..treatment_effect])

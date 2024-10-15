@@ -1,0 +1,5 @@
+# Dedication Page {.unnumbered}
+
+This analysis is dedicated to the only being that loves power more than we do. 
+
+![Gollum when he sees our statistical analysis.](gollum.jpg)
