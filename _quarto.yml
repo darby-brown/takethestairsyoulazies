@@ -1,0 +1,16 @@
+project:
+  type: book
+
+book:
+  title: "# Does placing signs encouraging stairs over elevators increase stair use?"
+  author: "Darby Brown, Hanjin Jia, Thong Trinh, Victor Popp, Lena Reissinge"
+  date: "10/15/2024"
+  chapters:
+    - ./PROJECT_power_analysis.qmd
+format:
+  html:
+    theme: cosmo
+  pdf:
+    documentclass: scrreprt
+
+editor: source
