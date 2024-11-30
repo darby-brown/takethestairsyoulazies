@@ -1,0 +1,76 @@
+# Exploring our data
+
+```{r}
+library(ggplot2)
+library(data.table)
+```
+
+
+## Load the combined data
+```{r}
+d <- fread(file.path("..", "data", "processed", "CombinedData.csv"))
+View(d)
+```
+
+
+
+## Create a few plots
+```{r}
+ggplot(d, aes(x = treatment, fill = factor(stair_use))) +
+  geom_bar(position = "fill") +
+  labs(title = "Proportion of Stair Use by Treatment",
+       x = "Treatment",
+       y = "Proportion",
+       fill = "Stair Use") +
+  theme_minimal()
+```
+
+
+```{r}
+ggplot(d, aes(x = factor(group_size), fill = factor(stair_use))) +
+  geom_bar(position = "fill") +
+  labs(title = "Proportion of Stair Use by Group Size",
+       x = "Group Size",
+       y = "Proportion",
+       fill = "Stair Use") +
+  theme_minimal()
+```
+
+
+```{r}
+ggplot(d, aes(x = gender, fill = factor(stair_use))) +
+  geom_bar(position = "fill") +
+  labs(title = "Proportion of Stair Use by Gender",
+       x = "Gender",
+       y = "Proportion",
+       fill = "Stair Use") +
+  theme_minimal()
+```
+
+
+```{r}
+ggplot(d, aes(x = factor(stair_use), fill = factor(stair_use))) +
+  geom_bar(position = "dodge") +
+  facet_wrap(~ group_size) +
+  labs(title = "Stair Use by Treatment and Group Size",
+       x = "Stair Use",
+       y = "Count",
+       fill = "Stair Use") +
+  theme_minimal()
+```
+```{r}
+?geom_jitter
+```
+
+
+```{r}
+ggplot(d, aes(x = heavy_items, y = stair_use)) +
+  geom_jitter(alpha = 0.5) +
+  labs(title = "Stair Use vs Number of Heavy Items",
+       x = "Number of Heavy Items",
+       y = "Stair Use") +
+  theme_minimal()
+```
+
+
+
