@@ -1,0 +1,36 @@
+# Exploring our data
+
+```{r}
+library(ggplot2)
+library(data.table)
+```
+
+
+## Load the combined data
+```{r}
+d <- fread(file.path("..", "data", "processed", "CombinedData_DB.csv"))
+View(d)
+```
+
+
+## Run t-test for time saving poster
+```{r}
+timesave <- t.test(d[treatment == 'Control poster', stair_use], d[treatment == 'Time poster', stair_use])
+timesave
+```
+
+
+## Run t-test for health poster
+
+```{r}
+health <- t.test(d[treatment == 'Control poster', stair_use], d[treatment == 'Health poster', stair_use])
+health
+```
+
+
+## Logistic Regression Model
+
+```{r}
+model <- glm(stair_use ~ gender + group_size + heavy_items + treatment, data = d, family = binomial)
+summary(model)
+```
