@@ -1,0 +1,218 @@
+# Covariate balance check
+In this file we conduct a covariate balance check, to see if our randomization resulted in a somewhat balanced dataset (across the different treatment and control groups).
+The idea 
+
+
+
+## Load required libraries
+```{r}
+library(data.table)
+library(ggplot2)
+library(nnet)
+library(lmtest)
+library(tableone)
+```
+
+
+## Loading our data
+```{r}
+d <- fread(file.path("..", "data", "processed", "CombinedData_DB.csv"))
+```
+
+
+
+
+## Visually inspect the data:
+```{r}
+ggplot(d, aes(x=treatment, fill=factor(gender))) +
+  geom_bar(position="fill") + 
+  labs(x="Treatment Group", y="Proportion", fill="Gender") +
+  theme_minimal()
+
+# Similarly for heavy_items
+ggplot(d, aes(x=treatment, fill=factor(heavy_items))) +
+  geom_bar(position="fill") + 
+  labs(x="Treatment Group", y="Proportion", fill="Heavy Items") +
+  theme_minimal()
+```
+
+```{r}
+# Distribution of group_size across treatment groups
+ggplot(d, aes(x=treatment, y=group_size)) +
+  geom_boxplot() +
+  labs(x="Treatment Group", y="Group Size") +
+  theme_minimal()
+```
+
+
+## Conduct statistical tests to determine significance
+### Gender (categorical)
+```{r}
+#Contingency table
+gender_table <- table(d$treatment, d$gender)
+
+chisq_gender <- chisq.test(gender_table)
+print("Chi-square test for gender:")
+print(chisq_gender)
+
+fisher_gender <- fisher.test(gender_table)
+print("Fisher's exact test for gender:")
+print(fisher_gender)
+```
+
+
+### Heavy items (binary)
+```{r}
+heavy_items_table <- table(d$treatment, d$heavy_items)
+
+chisq_heavy_items <- chisq.test(heavy_items_table)
+print("Chi-square test for heavy items:")
+print(chisq_heavy_items)
+
+
+fisher_heavy_items <- fisher.test(heavy_items_table)
+print("Fisher's exact test for heavy items:")
+print(fisher_heavy_items)
+```
+
+
+
+### Group size (continuous)
+```{r}
+# ANOVA
+anova_group_size <- aov(group_size ~ treatment, data=d)
+print("ANOVA for group size:")
+summary(anova_group_size)
+
+# Kruskal-Wallis test (non-parametric, does not assume normality)
+kruskal_group_size <- kruskal.test(group_size ~ treatment, data=d)
+print("Kruskal-Wallis test for group size:")
+print(kruskal_group_size)
+```
+
+
+
+
+## Fitting a null model:
+```{r}
+#Firstly, ensure that the treatment is considered a categorical variable - and that the control group is considered the baseline (useful for when we need to compare the two different treatments to the control)
+d[, treatment := factor(treatment, levels = c("Control poster", "Health poster", "Time poster" ))]
+
+#The idea here is that we assume no covariate influce the treatment assignment
+null_model <- multinom(treatment ~ 1, data=d)
+```
+
+
+## Fitting a full model:
+```{r}
+full_model <- multinom(treatment ~ gender + group_size + heavy_items, data=d)
+```
+## Comparing the models
+```{r}
+#I'm not that familiar with this lrtest package, but found the following, which seems to be exactly what I want: https://api.rpubs.com/tomanderson_34/lrt
+lr_test <- lrtest(null_model, full_model)
+print("Likelihood Ratio Test:")
+print(lr_test)
+```
+
+
+## Additional covariate balance checks
+```{r}
+# 1. Create a table summarizing covariates by treatment
+vars <- c("gender", "group_size", "heavy_items")
+# Setting test = TRUE performs appropriate hypothesis tests for differences across groups
+# Setting printOptions = list(smd = TRUE) includes standardized mean differences (SMDs)
+tab1 <- CreateTableOne(vars = vars, strata = "treatment", data = d, test = TRUE)
+print(tab1, printOptions = list(smd = TRUE))
+```
+
+```{r}
+# List of variables to test
+vars <- c("gender", "group_size", "heavy_items")
+
+# Function to perform appropriate tests for each variable
+perform_tests <- function(data, vars, strata_var) {
+  results <- list()
+  
+  for (var in vars) {
+    if (is.factor(data[[var]]) || is.character(data[[var]]) || length(unique(data[[var]])) <= 5) {
+      # Categorical variable: Chi-square or Fisher's Exact Test
+      cat("Testing categorical variable:", var, "\n")
+      contingency_table <- table(data[[var]], data[[strata_var]])
+      if (any(contingency_table < 5)) {
+        test <- fisher.test(contingency_table, workspace = 2e8)
+        results[[var]] <- list(method = "Fisher's Exact Test", p_value = test$p.value)
+      } else {
+        test <- chisq.test(contingency_table)
+        results[[var]] <- list(method = "Chi-square Test", p_value = test$p.value)
+      }
+    } else {
+      # Continuous variable: ANOVA or Kruskal-Wallis Test
+      cat("Testing continuous variable:", var, "\n")
+      formula <- as.formula(paste(var, "~", strata_var))
+      anova_test <- aov(formula, data = data)
+      results[[var]] <- list(method = "ANOVA", p_value = summary(anova_test)[[1]]["Pr(>F)"][1])
+      
+      # Uncomment below if you want a non-parametric alternative
+      # kw_test <- kruskal.test(formula, data = data)
+      # results[[var]] <- list(method = "Kruskal-Wallis Test", p_value = kw_test$p.value)
+    }
+  }
+  return(results)
+}
+
+# Run the tests
+test_results <- perform_tests(d, vars, "treatment")
+
+# Print the results
+cat("Test Results:\n")
+for (var in names(test_results)) {
+  cat(var, ":", test_results[[var]]$method, "- p-value:", test_results[[var]]$p_value, "\n")
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+# 2. Separate tests for categorical variables:
+# Chi-square test for gender
+cat("Chi-square test for Gender vs. Treatment:\n")
+gender_table <- table(d$treatment, d$gender)
+print(gender_table)
+print(chisq.test(gender_table))
+
+# Chi-square test for heavy_items
+cat("\nChi-square test for Heavy Items vs. Treatment:\n")
+heavy_table <- table(d$treatment, d$heavy_items)
+print(heavy_table)
+print(chisq.test(heavy_table))
+```
+
+```{r}
+# 3. Test for the continuous variable (group_size):
+cat("\nANOVA for Group Size vs. Treatment:\n")
+anova_group_size <- aov(group_size ~ treatment, data = d)
+print(summary(anova_group_size))
+```
+
+
+
+
