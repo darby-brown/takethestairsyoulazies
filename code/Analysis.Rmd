@@ -12,6 +12,27 @@ d <- fread(file.path("..", "data", "processed", "CombinedData_DB.csv"))
 View(d)
 ```
 
+## Lcalculate proportions
+```{r}
+# Calculate the ratio of stair use in the "Control poster" group
+control_ratio <- sum(d$treatment == 'Control poster' & d$stair_use == 1) / sum(d$treatment == 'Control poster')
+
+# Print the result
+print(paste('control ratio: ', control_ratio))
+
+# Calculate the ratio of stair use in the "Control poster" group
+health_ratio <- sum(d$treatment == 'Health poster' & d$stair_use == 1) / sum(d$treatment == 'Health poster')
+
+# Print the result
+print(paste('health ratio: ', health_ratio))
+
+# Calculate the ratio of stair use in the "Control poster" group
+time_ratio <- sum(d$treatment == 'Time poster' & d$stair_use == 1) / sum(d$treatment == 'Time poster')
+
+# Print the result
+print(paste('time ratio: ', time_ratio))
+```
+
 
 ## Run t-test for time saving poster
 ```{r}
@@ -34,3 +55,21 @@ health
 model <- glm(stair_use ~ gender + group_size + heavy_items + treatment, data = d, family = binomial)
 summary(model)
 ```
+## Linear Regression Model
+
+```{r}
+model <- lm(stair_use ~ treatment, data = d)
+summary(model)
+```
+# All parameter linear regression model
+
+```{r}
+model <- lm(stair_use ~ gender + group_size + heavy_items + treatment, data = d)
+summary(model)
+```
+
+```{r}
+library(stargazer)
+stargazer(model, type = "latex", title = "Linear Model Summary")
+```
+
